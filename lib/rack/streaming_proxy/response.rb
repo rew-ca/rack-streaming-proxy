@@ -61,7 +61,10 @@ private
     @body_permitted = read_from_destination
     Rack::StreamingProxy::Proxy.log :debug, "Parent received: Reponse has body? = #{@body_permitted}."
     @headers = HeaderHash.new(read_from_destination)
-    @chunked = (@headers['Transfer-Encoding'] == 'chunked')
+
+    #SEMI HACK - force chunked respone - puma can only understand chunked responses, and any HTTP1.1 client (ie: any browser we support) can handle it
+    @chunked = true
+    #@chunked = (@headers['Transfer-Encoding'] == 'chunked')
     finish unless @body_permitted # If there is a body, finish will be called inside each.
   end
 
