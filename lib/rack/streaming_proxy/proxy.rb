@@ -17,7 +17,7 @@ class Rack::StreamingProxy::Proxy
       # :high verbosity outputs :debug level messages.
       # This is independent of the Logger's log_level, as set in Rails, for example,
       # although the Logger's level can override this setting.
-      @log_verbosity ||= :low
+      @log_verbosity ||= :high
 
       # No retries are performed by default.
       @num_retries_on_5xx ||= 0
@@ -76,24 +76,28 @@ class Rack::StreamingProxy::Proxy
 
       # Notify client http version to the instance of Response class.
       response.client_http_version = env['HTTP_VERSION'].sub(/HTTP\//, '') if env.has_key?('HTTP_VERSION')
-      # Ideally, both a Content-Length header field and a Transfer-Encoding 
-      # header field are not expected to be present from servers which 
-      # are compliant with RFC2616. However, irresponsible servers may send 
+      # Ideally, both a Content-Length header field and a Transfer-Encoding
+      # header field are not expected to be present from servers which
+      # are compliant with RFC2616. However, irresponsible servers may send
       # both to rack-streaming-proxy.
-      # RFC2616 says if a message is received with both a Transfer-Encoding 
-      # header field and a Content-Length header field, the latter MUST be 
+      # RFC2616 says if a message is received with both a Transfer-Encoding
+      # header field and a Content-Length header field, the latter MUST be
       # ignored. So I deleted a Content-Length header here.
       #
-      # Though there is a case that rack-streaming-proxy deletes both a 
-      # Content-Length and a Transfer-Encoding, a client can acknowledge the 
-      # end of body by closing the connection when the entire response has 
-      # been sent without a Content-Length header. So a Content-Length header 
+      # Though there is a case that rack-streaming-proxy deletes both a
+      # Content-Length and a Transfer-Encoding, a client can acknowledge the
+      # end of body by closing the connection when the entire response has
+      # been sent without a Content-Length header. So a Content-Length header
       # does not have to be required here in our understaing.
       response.headers.delete('Content-Length') if response.headers.has_key?('Transfer-Encoding')
-      if env.has_key?('HTTP_VERSION') && env['HTTP_VERSION'] < 'HTTP/1.1'
-        # Be compliant with RFC2146
-        response.headers.delete('Transfer-Encoding')
-      end
+
+      self.class.log :info, response.headers.ai
+
+      #Hack - force chunked Transfer-Encoding
+      #if env.has_key?('HTTP_VERSION') && env['HTTP_VERSION'] < 'HTTP/1.1'
+        ## Be compliant with RFC2146
+        #response.headers.delete('Transfer-Encoding')
+      #end
 
       self.class.log :info, "Finishing proxy request to: #{destination_uri}"
       [response.status, response.headers, response]

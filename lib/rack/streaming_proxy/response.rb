@@ -22,11 +22,7 @@ class Rack::StreamingProxy::Response
         if @chunked
           size = bytesize(chunk)
           next if size == 0
-          if @client_http_version >= '1.1'
-            yield [size.to_s(16), term, chunk, term].join
-          else
-            yield chunk
-          end
+          yield [size.to_s(16), term, chunk, term].join
         else
           yield chunk
         end
@@ -34,9 +30,8 @@ class Rack::StreamingProxy::Response
 
       finish
 
-      if @chunked && @client_http_version >= '1.1'
-        yield ['0', term, '', term].join
-      end
+      yield ['0', term, '', term].join
+
     end
   end
 
@@ -63,6 +58,8 @@ private
     @headers = HeaderHash.new(read_from_destination)
 
     #SEMI HACK - force chunked respone - puma can only understand chunked responses, and any HTTP1.1 client (ie: any browser we support) can handle it
+    chunked = (@headers['Transfer-Encoding'] == 'chunked')
+    puts "Would be chunked? #{chunked}"
     @chunked = true
     #@chunked = (@headers['Transfer-Encoding'] == 'chunked')
     finish unless @body_permitted # If there is a body, finish will be called inside each.
